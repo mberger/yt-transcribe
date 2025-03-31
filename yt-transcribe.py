@@ -2,7 +2,7 @@ import yt_dlp
 from pydub import AudioSegment
 import whisper
 import os
-from datetime import datetime
+import re
 
 def download_audio_from_youtube(url):
     ydl_opts = {
@@ -16,9 +16,13 @@ def download_audio_from_youtube(url):
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
+        info = ydl.extract_info(url, download=True)  # Extract metadata and download
+        title = info.get('title', 'unknown_title')   # Get video title
+
+    # Sanitize filename (remove unsafe characters)
+    safe_title = re.sub(r'[\\/*?:"<>|]', '', title)
     
-    return 'audio.mp3'
+    return 'audio.mp3', safe_title
 
 def transcribe_audio(audio_file):
     model = whisper.load_model("base")
@@ -32,13 +36,11 @@ def save_transcript_to_markdown(transcript, filename):
 
 if __name__ == "__main__":
     video_url = input("Enter the YouTube video URL: ")
-    audio_file = download_audio_from_youtube(video_url)
+    audio_file, video_title = download_audio_from_youtube(video_url)
     transcript = transcribe_audio(audio_file)
     
-    # Get the current date
-    current_date = datetime.now().strftime("%Y-%m-%d")
-    # Create filename with date
-    filename = f'transcript_{current_date}.md'
+    # Use video title for filename
+    filename = f'transcript_{video_title}.md'
     
     save_transcript_to_markdown(transcript, filename)
     print(f"Transcript saved to {filename}")
